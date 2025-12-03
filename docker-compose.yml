@@ -1,0 +1,152 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: covid-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - covid-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: covid-kafka
+    depends_on:
+     - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    networks:
+     - covid-net
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: covid-kafka-ui
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+     - "8080:8080"
+    networks:
+     - covid-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: covid-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: covid_db
+      MYSQL_USER: sa
+      MYSQL_PASSWORD: P@ssw0rd123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - covid-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: covid-phpmyadmin
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8085:80"          
+    networks:
+      - covid-net
+
+  nifi:
+    image: apache/nifi:latest
+    container_name: covid-nifi
+    environment:
+      NIFI_WEB_HTTP_PORT: 8443
+      SINGLE_USER_CREDENTIALS_USERNAME: admin
+      SINGLE_USER_CREDENTIALS_PASSWORD: admin1234567890
+    depends_on:
+      - kafka
+      - mysql
+    ports:
+      - "8443:8443"
+      - "8081:8081"         
+    volumes:
+      - nifi_data:/opt/nifi/nifi-current
+    networks:
+      - covid-net
+  spark-master:
+    image: apache/spark:3.5.3
+    container_name: covid-spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
+    ports:
+      - "7077:7077"
+      - "8083:8080"
+    environment:
+      SPARK_MASTER_HOST: spark-master
+    networks:
+      - covid-net
+
+  spark-worker-1:
+    image: apache/spark:3.5.3
+    container_name: covid-spark-worker-1
+    depends_on:
+      - spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2g
+    ports:
+      - "8084:8081"
+    networks:
+      - covid-net
+
+  covid-producer:
+    build: ./producer
+    container_name: covid-producer
+    depends_on:
+      - kafka
+    networks:
+      - covid-net
+
+  spark-app:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: covid-spark-app
+    depends_on:
+      - spark-master
+      - kafka
+      - mysql                     # غيرناه من sqlserver إلى mysql
+    environment:
+      SPARK_MASTER: spark://spark-master:7077
+    volumes:
+      - ./tmp/checkpoints:/tmp/checkpoints
+    networks:
+      - covid-net
+
+networks:
+  covid-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  nifi_data:
+
+  

@@ -161,8 +161,8 @@ Data is refreshed in near real-time.
 ## How to Run the Project
 
 1. Clone the repository  
-git clone https://github.com/MohamedTarek2412/covid-realtime-analytics.git  
-cd covid-realtime-analytics  
+git clone https://github.com/MohamedTarek2412/Bigdata-covid19-real-time.git  
+cd Bigdata-covid19-real-time  
 
 2. Start all services  
 docker-compose up -d  

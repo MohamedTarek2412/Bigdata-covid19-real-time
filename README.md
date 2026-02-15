@@ -76,7 +76,7 @@ Power BI Dashboards
 ---
 
 ## Project Structure
-
+```
 .
 ├── docker-compose.yml  
 ├── init-db/  
@@ -91,7 +91,7 @@ Power BI Dashboards
 │   ├── entrypoint.sh  
 │   └── requirements.txt  
 └── README.md  
----
+```
 ---
 
 ## Data Pipeline Flow

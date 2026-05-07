@@ -141,21 +141,6 @@ Processed analytics are stored in MySQL tables:
 - covid_predictions: Short-term future predictions
 - continent_covid_stats: Aggregated continent-level analytics
 - covid_hotspots: Detected hotspot regions
-
----
-
-## Power BI Integration
-
-Power BI connects directly to MySQL as a serving layer to visualize analytics.
-
-Dashboards include:
-- Global COVID-19 Overview
-- Country-Level Trend Analysis
-- Prediction vs Actual Analysis
-- Hotspot Monitoring Dashboard
-
-Data is refreshed in near real-time.
-
 ---
 
 ## How to Run the Project
